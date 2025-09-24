@@ -1,11 +1,11 @@
-from django.http import HttpResponseForbidden
-from django.shortcuts import render, get_object_or_404,redirect
+from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404,redirect
 from .models import *
-from django.contrib import messages
+from django.views.decorators.http import require_http_methods
 # Create your views here.
 
+@require_http_methods(["POST"])
 def add_student(request):
-    if request.method == "POST":
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         student_id = request.POST.get('student_id')
@@ -62,29 +62,36 @@ def add_student(request):
             parent = parent
         )
         create_notification(request.user, f"Added Student: {student.first_name} {student.last_name}")
-        messages.success(request, "Student added Successfully")
-        # return render(request, "student_list")
-
-  
-
-    return render(request,"students/add-student.html")
+        return JsonResponse({'id': student.id, 'slug': student.slug})
 
 
 
+@require_http_methods(["GET"])
 def student_list(request):
-    student_list = Student.objects.select_related('parent').all()
-    unread_notification = request.user.notification_set.filter(is_read=False)
-    context = {
-        'student_list': student_list,
-        'unread_notification': unread_notification
-    }
-    return render(request, "students/students.html", context)
+    students = Student.objects.select_related('parent').all()
+    data = []
+    for s in students:
+        data.append({
+            'id': s.id,
+            'slug': s.slug,
+            'first_name': s.first_name,
+            'last_name': s.last_name,
+            'student_id': s.student_id,
+            'gender': s.gender,
+            'student_class': s.student_class,
+            'parent': {
+                'father_name': s.parent.father_name if s.parent else None,
+                'mother_name': s.parent.mother_name if s.parent else None,
+            }
+        })
+    return JsonResponse({'results': data})
 
 
+@require_http_methods(["POST"])
 def edit_student(request,slug):
     student = get_object_or_404(Student, slug=slug)
     parent = student.parent if hasattr(student, 'parent') else None
-    if request.method == "POST":
+    if True:
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         student_id = request.POST.get('student_id')
@@ -126,25 +133,29 @@ def edit_student(request,slug):
         student.section = section
         student.student_image = student_image
         student.save()
-        create_notification(request.user, f"Added Student: {student.first_name} {student.last_name}")
-        
-        return redirect("student_list")
-    return render(request, "students/edit-student.html",{'student':student, 'parent':parent} )
+        create_notification(request.user, f"Updated Student: {student.first_name} {student.last_name}")
+        return JsonResponse({'id': student.id, 'slug': student.slug})
 
 
+@require_http_methods(["GET"])
 def view_student(request, slug):
     student = get_object_or_404(Student, student_id = slug)
-    context = {
-        'student': student
+    data = {
+        'id': student.id,
+        'slug': student.slug,
+        'first_name': student.first_name,
+        'last_name': student.last_name,
+        'student_id': student.student_id,
+        'gender': student.gender,
+        'student_class': student.student_class,
     }
-    return render(request, "students/student-details.html", context)
+    return JsonResponse(data)
 
 
+@require_http_methods(["POST"])
 def delete_student(request,slug):
-    if request.method == "POST":
         student = get_object_or_404(Student, slug=slug)
         student_name = f"{student.first_name} {student.last_name}"
         student.delete()
         create_notification(request.user, f"Deleted student: {student_name}")
-        return redirect ('student_list')
-    return HttpResponseForbidden()
+    return JsonResponse({'status': 'deleted'})

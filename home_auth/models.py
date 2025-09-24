@@ -26,12 +26,12 @@ class CustomUser(AbstractUser):
     # Set related_name to None to prevent reverse relationship creation
     groups = models.ManyToManyField(
         'auth.Group',
-        related_name=None,
+        related_name='+',
         blank=True
     )
     user_permissions = models.ManyToManyField(
         'auth.Permission',
-        related_name=None,
+        related_name='+',
         blank=True
     )
 
@@ -41,7 +41,7 @@ class CustomUser(AbstractUser):
 class PasswordResetRequest(models.Model):
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
     email = models.EmailField()
-    token = models.CharField(max_length=32, default=get_random_string(32), editable=False, unique=True)
+    token = models.CharField(max_length=32, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     # Define token validity period (e.g., 1 hour)
@@ -51,7 +51,9 @@ class PasswordResetRequest(models.Model):
         return timezone.now() <= self.created_at + self.TOKEN_VALIDITY_PERIOD
 
     def send_reset_email(self):
-        reset_link = f"http://localhost:8000/authentication/reset-password/{self.token}/"
+        from django.conf import settings
+        base = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:3000')
+        reset_link = f"{base}/reset-password/{self.token}"
         send_mail(
             'Password Reset Request',
             f'Click the following link to reset your password: {reset_link}',
@@ -59,6 +61,12 @@ class PasswordResetRequest(models.Model):
             [self.email],
             fail_silently=False,
         )
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            # ensure a unique token per instance
+            self.token = get_random_string(32)
+        super().save(*args, **kwargs)
         
 
 
