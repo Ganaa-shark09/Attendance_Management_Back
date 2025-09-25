@@ -1,29 +1,34 @@
-from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from .models import Notification
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
 
 # Create your views here.
 
+@api_view(["GET"]) 
+@permission_classes([AllowAny])
 def index(request):
-    return JsonResponse({ 'message': 'API is running' })
+    return Response({ 'message': 'API is running' })
 
+@api_view(["GET"]) 
+@permission_classes([IsAuthenticated])
 def dashboard(request):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden()
     unread_notification = Notification.objects.filter(user=request.user, is_read=False)
-    return JsonResponse({ 'unread_notifications': unread_notification.count() })
+    return Response({ 'unread_notifications': unread_notification.count() })
 
 
 
+@api_view(["POST"]) 
+@permission_classes([IsAuthenticated])
 def mark_notification_as_read(request):
-    if request.method == 'POST':
-        notification = Notification.objects.filter(user=request.user, is_read=False)
-        notification.update(is_read=True)
-        return JsonResponse({'status': 'success'})
-    return HttpResponseForbidden()
+    notification = Notification.objects.filter(user=request.user, is_read=False)
+    notification.update(is_read=True)
+    return Response({'status': 'success'})
 
+@api_view(["POST"]) 
+@permission_classes([IsAuthenticated])
 def clear_all_notification(request):
-    if request.method == "POST":
-        notification = Notification.objects.filter(user=request.user)
-        notification.delete()
-        return JsonResponse({'status': 'success'})
-    return HttpResponseForbidden
+    notification = Notification.objects.filter(user=request.user)
+    notification.delete()
+    return Response({'status': 'success'})

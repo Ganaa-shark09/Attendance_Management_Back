@@ -22,6 +22,7 @@ urlpatterns = [
     path('forgot-password/', forgot_password_view, name='forgot-password'),
     path('reset-password/<str:token>/', reset_password_view, name='reset-password'),
     path('logout/', logout_view, name='logout'),
+    path('me/', me_view, name='me'),
 
 
 ]

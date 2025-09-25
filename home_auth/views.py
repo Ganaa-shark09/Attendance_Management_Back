@@ -4,6 +4,10 @@ from django.http import JsonResponse
 from .models import CustomUser, PasswordResetRequest
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from .serializers import CustomUserSerializer
+from rest_framework.response import Response
 
 
 @csrf_exempt
@@ -90,7 +94,14 @@ def reset_password_view(request, token):
     return JsonResponse({'detail': 'password reset successful'})
 
 
-@require_http_methods(["POST"]) 
+@api_view(["POST"]) 
 def logout_view(request):
     logout(request)
-    return JsonResponse({'detail': 'logged out'})
+    return Response({'detail': 'logged out'})
+
+
+@api_view(["GET"]) 
+@permission_classes([IsAuthenticated])
+def me_view(request):
+    serializer = CustomUserSerializer(request.user)
+    return Response(serializer.data)
